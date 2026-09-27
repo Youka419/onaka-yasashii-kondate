@@ -272,7 +272,7 @@
       const items = grouped[slot].sort(function (a, b) {
         if (b.score !== a.score) return b.score - a.score;
         return a.menu < b.menu ? -1 : 1;
-      }).slice(0, 3);
+      }).slice(0, 5);
       return { meal: slot, items: items };
     });
   }

@@ -158,12 +158,30 @@
     toast(added.length + "件を入れました。" + skipped.length + "件はすでにありました");
   }
 
+  function currentTip(meal) {
+    const found = state.menus.find(function (menu) {
+      return menu.menu === meal.menu && menu.meal === meal.meal;
+    });
+    return (found && found.tip) || meal.tip || "";
+  }
+
+  function tipHtml(tip) {
+    if (!tip) return "";
+    const lines = String(tip).split(/\n+/).map(function (line) {
+      return line.trim().replace(/^\d+[.．、]\s*/, "");
+    }).filter(Boolean);
+    if (lines.length < 2) return '<p class="tip">' + esc(tip) + "</p>";
+    return '<p class="meta">作り方（1人分）</p><ol class="steps">' + lines.map(function (line) {
+      return "<li>" + esc(line) + "</li>";
+    }).join("") + "</ol>";
+  }
+
   function renderMealCard(meal) {
     const names = K.splitIngredients(meal.ingredients);
     const chips = names.map(function (name) {
       return "<li>" + esc(name) + "</li>";
     }).join("");
-    const tip = meal.tip ? '<p class="tip">' + esc(meal.tip) + "</p>" : "";
+    const tip = tipHtml(currentTip(meal));
     const button = names.length
       ? '<button type="button" class="primary" data-action="add-meal" data-date="' + esc(meal.date) + '" data-meal="' + esc(meal.meal) + '" data-menu="' + esc(meal.menu) + '">材料を買い物リストへ</button>'
       : "";
@@ -236,7 +254,7 @@
       '<span class="pill pill-meal">' + esc(item.meal) + "</span>" +
       '<h4 class="menu-name">' + esc(item.menu) + "</h4>" +
       '<ul class="chips">' + chips + "</ul>" +
-      (item.tip ? '<p class="tip">' + esc(item.tip) + "</p>" : "") +
+      tipHtml(item.tip) +
       '<button type="button" class="primary" data-action="use-menu" data-id="' + esc(item.id) + '"' + dateAttr + '>この日の献立にする</button>' +
       shop +
       "</article>"

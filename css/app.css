@@ -317,6 +317,16 @@ main {
   margin: 8px 0 0;
 }
 
+.steps {
+  margin: 4px 0 0;
+  padding: 0 0 0 1.3em;
+  line-height: 1.6;
+}
+
+.steps li + li {
+  margin-top: 6px;
+}
+
 .primary {
   width: 100%;
   margin-top: 12px;

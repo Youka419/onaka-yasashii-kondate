@@ -290,6 +290,45 @@
     });
   }
 
+  function recommendOne(menus, haveNames, isoDate) {
+    const have = {};
+    (Array.isArray(haveNames) ? haveNames : []).forEach(function (name) {
+      have[normalizeName(name)] = true;
+    });
+    const haveCount = Object.keys(have).length;
+    let pool = (Array.isArray(menus) ? menus : []).map(function (menu) {
+      const uses = Array.isArray(menu.ingredients) ? menu.ingredients : splitIngredients(menu.ingredients);
+      const matched = [];
+      const missing = [];
+      uses.forEach(function (name) {
+        if (have[normalizeName(name)]) matched.push(name);
+        else missing.push(name);
+      });
+      return {
+        id: menu.id,
+        meal: menu.meal,
+        menu: menu.menu,
+        ingredients: uses,
+        tip: menu.tip || "",
+        matched: matched,
+        missing: missing,
+        score: haveCount ? matched.length * 10 - missing.length : 0,
+      };
+    }).filter(function (item) {
+      return item.ingredients.length && (!haveCount || item.matched.length);
+    });
+    if (!pool.length) return null;
+    pool.sort(function (a, b) {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.id < b.id ? -1 : 1;
+    });
+    if (haveCount) {
+      const best = pool[0].score;
+      pool = pool.filter(function (item) { return item.score === best; });
+    }
+    return pool[dayIndex(isoDate, "day", pool.length)];
+  }
+
   function mergeMeals(fileMeals, picks) {
     const override = {};
     (Array.isArray(picks) ? picks : []).forEach(function (meal) {
@@ -334,6 +373,7 @@
     suggestFoods: suggestFoods,
     resolveIngredient: resolveIngredient,
     recommendMenus: recommendMenus,
+    recommendOne: recommendOne,
     mergeMeals: mergeMeals,
   };
 });

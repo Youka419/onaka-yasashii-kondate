@@ -182,11 +182,14 @@
     const iso = K.toIso(date);
     const today = K.toIso(K.startOfDay(new Date()));
     const meals = K.mealsOn(allMeals(), iso);
+    const suggested = recommendationFor(iso);
     const body = meals.length
       ? meals.map(function (meal) {
           return renderMealCard(meal);
         }).join("")
-      : '<p class="empty">この日の献立はまだありません</p>';
+      : suggested
+        ? recoCard(suggested, iso)
+        : '<p class="empty">この日の献立はまだありません</p>';
     const badgeHtml = iso === today ? '<span class="pill pill-today">今日</span>' : "";
     return (
       '<section class="day ' + (role === "focus" ? "is-focus" : "is-side") + '">' +
@@ -219,47 +222,56 @@
     }).join("");
   }
 
-  function recoCard(item) {
+  function recoCard(item, iso) {
     const chips = item.ingredients.map(function (name) {
       const have = item.matched.indexOf(name) !== -1;
       return '<li class="' + (have ? "is-have" : "is-need") + '">' + esc(name) + "</li>";
     }).join("");
+    const dateAttr = iso ? ' data-date="' + esc(iso) + '"' : "";
     const shop = item.missing.length
-      ? '<button type="button" class="ghost" data-action="shop-menu" data-id="' + esc(item.id) + '">足りない食材を買い物へ</button>'
+      ? '<button type="button" class="ghost" data-action="shop-menu" data-id="' + esc(item.id) + '"' + dateAttr + '>足りない食材を買い物へ</button>'
       : "";
     return (
       '<article class="card reco-card">' +
+      '<span class="pill pill-meal">' + esc(item.meal) + "</span>" +
       '<h4 class="menu-name">' + esc(item.menu) + "</h4>" +
       '<ul class="chips">' + chips + "</ul>" +
       (item.tip ? '<p class="tip">' + esc(item.tip) + "</p>" : "") +
-      '<button type="button" class="primary" data-action="use-menu" data-id="' + esc(item.id) + '">この日の献立にする</button>' +
+      '<button type="button" class="primary" data-action="use-menu" data-id="' + esc(item.id) + '"' + dateAttr + '>この日の献立にする</button>' +
       shop +
       "</article>"
     );
   }
 
+  function recommendationFor(iso) {
+    const item = K.recommendOne(state.menus, state.pantry, iso);
+    if (item || !state.pantry.length) return item;
+    const fallback = K.recommendOne(state.menus, [], iso);
+    if (!fallback) return null;
+    fallback.fallback = true;
+    return fallback;
+  }
+
   function recoHtml() {
-    if (!state.pantry.length) {
-      return '<p class="meta">食材を入れると、見ている日の朝食・お弁当・昼食・夕ご飯・間食が1品ずつ出ます。</p>';
-    }
-    const groups = K.recommendMenus(state.menus, state.pantry, K.toIso(state.focus));
-    const any = groups.some(function (group) { return group.items.length; });
-    if (!any) {
-      return '<p class="empty">入れた食材では、負担の少ないメニューが見つかりませんでした。キャベツ、大根、豆腐、卵などを入れてみてください。</p>';
+    const iso = K.toIso(state.focus);
+    if (K.mealsOn(allMeals(), iso).length) return "";
+    const item = recommendationFor(iso);
+    const lead = state.pantry.length
+      ? "入れた食材を使って、この日の欄におすすめを1品出しています。"
+      : "この日の欄に、おすすめを1品出しています。食材を入れると、その食材を使った品に変わります。";
+    if (!item) {
+      return '<p class="empty">この日のおすすめを出せませんでした。</p>';
     }
     const limited = state.pantry.some(function (name) {
       const food = K.findFood(state.categories, name);
       return food && food.status === "limit";
     });
-    const note = limited
-      ? '<p class="meta">△の食材はおすすめの中心にしていません。</p>'
-      : "";
-    return note + '<p class="meta">' + esc(K.formatDate(state.focus)) + 'は、食事ごとに1品だけ出しています。緑は手元にある食材、うすい色は足りない食材です。</p>' + groups.map(function (group) {
-      const body = group.items.length
-        ? '<div class="reco-items">' + group.items.map(recoCard).join("") + "</div>"
-        : '<p class="empty">この食材を使った' + esc(group.meal) + "はありません</p>";
-      return '<section class="reco-slot"><h3>' + esc(group.meal) + "</h3>" + body + "</section>";
-    }).join("");
+    const note = item.fallback
+      ? '<p class="meta">入れた食材では合わなかったので、別の1品を出しています。</p>'
+      : limited
+        ? '<p class="meta">△の食材はおすすめの中心にしていません。</p>'
+        : "";
+    return '<p class="meta">' + esc(lead) + "</p>" + note;
   }
 
   function renderMeals() {
@@ -449,6 +461,13 @@
     suggest.innerHTML = pantrySuggestHtml();
     chips.innerHTML = pantryChipsHtml();
     reco.innerHTML = recoHtml();
+    const days = document.querySelector(".days");
+    if (days) {
+      days.innerHTML =
+        renderDay(K.addDays(state.focus, -1), "side") +
+        renderDay(state.focus, "focus") +
+        renderDay(K.addDays(state.focus, 1), "side");
+    }
   }
 
   function addPantryText(text) {
@@ -533,7 +552,7 @@
     if (action === "use-menu") {
       const menu = findMenu(target.dataset.id);
       if (!menu) return;
-      const date = K.toIso(state.focus);
+      const date = target.dataset.date || K.toIso(state.focus);
       state.picks = state.picks.filter(function (meal) {
         return !(meal.date === date && meal.meal === menu.meal);
       });
@@ -545,7 +564,8 @@
         tip: menu.tip,
       });
       writePicks();
-      toast(K.formatDate(state.focus) + "の" + menu.meal + "に入れました");
+      const parsed = K.parseIso(date) || state.focus;
+      toast(K.formatDate(parsed) + "の" + menu.meal + "に入れました");
       render();
     }
     if (action === "shop-menu") {

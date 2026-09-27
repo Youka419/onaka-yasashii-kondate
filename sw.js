@@ -1,4 +1,4 @@
-const CACHE = "kondate-shell-v2";
+const CACHE = "kondate-shell-v3";
 const ASSETS = [
   "./",
   "./index.html",
@@ -59,7 +59,9 @@ self.addEventListener("fetch", function (event) {
       return response;
     }).catch(function () {
       return caches.match(request).then(function (cached) {
-        return cached || caches.match("./index.html");
+        if (cached) return cached;
+        if (request.mode === "navigate") return caches.match("./index.html");
+        return new Response("", { status: 504, statusText: "Offline" });
       });
     })
   );

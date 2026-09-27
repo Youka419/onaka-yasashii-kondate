@@ -238,7 +238,16 @@
     return null;
   }
 
-  function recommendMenus(menus, haveNames) {
+  function dayIndex(isoDate, meal, count) {
+    const key = String(isoDate || "") + "|" + meal;
+    let hash = 0;
+    for (let i = 0; i < key.length; i++) {
+      hash = (hash * 33 + key.charCodeAt(i)) >>> 0;
+    }
+    return hash % count;
+  }
+
+  function recommendMenus(menus, haveNames, isoDate) {
     const have = {};
     (Array.isArray(haveNames) ? haveNames : []).forEach(function (name) {
       have[normalizeName(name)] = true;
@@ -272,8 +281,12 @@
       const items = grouped[slot].sort(function (a, b) {
         if (b.score !== a.score) return b.score - a.score;
         return a.menu < b.menu ? -1 : 1;
-      }).slice(0, 5);
-      return { meal: slot, items: items };
+      });
+      if (!items.length) return { meal: slot, items: [] };
+      const best = items[0].score;
+      const tied = items.filter(function (item) { return item.score === best; });
+      const picked = tied[dayIndex(isoDate, slot, tied.length)];
+      return { meal: slot, items: [picked] };
     });
   }
 

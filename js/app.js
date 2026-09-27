@@ -240,9 +240,9 @@
 
   function recoHtml() {
     if (!state.pantry.length) {
-      return '<p class="meta">食材を入れると、朝食・お弁当・昼食・夕ご飯・間食のおすすめが出ます。</p>';
+      return '<p class="meta">食材を入れると、見ている日の朝食・お弁当・昼食・夕ご飯・間食が1品ずつ出ます。</p>';
     }
-    const groups = K.recommendMenus(state.menus, state.pantry);
+    const groups = K.recommendMenus(state.menus, state.pantry, K.toIso(state.focus));
     const any = groups.some(function (group) { return group.items.length; });
     if (!any) {
       return '<p class="empty">入れた食材では、負担の少ないメニューが見つかりませんでした。キャベツ、大根、豆腐、卵などを入れてみてください。</p>';
@@ -254,7 +254,7 @@
     const note = limited
       ? '<p class="meta">△の食材はおすすめの中心にしていません。</p>'
       : "";
-    return note + '<p class="meta">緑は手元にある食材、うすい色は足りない食材です。</p>' + groups.map(function (group) {
+    return note + '<p class="meta">' + esc(K.formatDate(state.focus)) + 'は、食事ごとに1品だけ出しています。緑は手元にある食材、うすい色は足りない食材です。</p>' + groups.map(function (group) {
       const body = group.items.length
         ? '<div class="reco-items">' + group.items.map(recoCard).join("") + "</div>"
         : '<p class="empty">この食材を使った' + esc(group.meal) + "はありません</p>";
@@ -272,6 +272,12 @@
     panel.innerHTML =
       '<section class="reco">' +
       '<h2 class="reco-title">食材からおすすめ</h2>' +
+      '<div class="day-nav">' +
+      '<button type="button" data-action="prev-day">前日</button>' +
+      '<p class="focus-date">' + esc(K.formatDate(state.focus)) + (focusIso === todayIso ? " 今日" : "") + "</p>" +
+      '<button type="button" data-action="next-day">翌日</button>' +
+      "</div>" +
+      back +
       '<form id="pantry-form" class="pantry-row">' +
       '<label class="search"><span>使いたい食材</span>' +
       '<input id="pantry-query" type="search" enterkeyhint="done" autocomplete="off" placeholder="例: 大根、卵" value="' + esc(state.pantryQuery) + '"></label>' +
@@ -281,12 +287,6 @@
       '<ul id="pantry-chips" class="pantry-chips">' + pantryChipsHtml() + "</ul>" +
       '<div id="reco-results">' + recoHtml() + "</div>" +
       "</section>" +
-      '<div class="day-nav">' +
-      '<button type="button" data-action="prev-day">前日</button>' +
-      '<p class="focus-date">' + esc(K.formatDate(state.focus)) + (focusIso === todayIso ? " 今日" : "") + "</p>" +
-      '<button type="button" data-action="next-day">翌日</button>' +
-      "</div>" +
-      back +
       '<div class="days">' +
       renderDay(K.addDays(state.focus, -1), "side") +
       renderDay(state.focus, "focus") +

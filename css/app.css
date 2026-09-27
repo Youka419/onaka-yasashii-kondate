@@ -84,6 +84,21 @@ img { display: block; }
   font-weight: 700;
 }
 
+.external-link {
+  max-width: 1120px;
+  margin: 10px auto 0;
+}
+
+.external-link a {
+  display: block;
+  max-width: 100%;
+  min-height: 44px;
+  color: var(--accent-dark);
+  font-weight: 700;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .tabs {
   position: fixed;
   left: 0;
